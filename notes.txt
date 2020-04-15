@@ -1,0 +1,56 @@
+
+>>> TUTORIAL 1 <<<
+https://www.youtube.com/watch?v=UmljXZIypDc
+
+- make virtualenv for django project
+- install django
+	$ pip install django  # install django
+	$ python -m django --version  # check version
+		django v3.0.5
+		python 3.7.4
+
+- view django subcommands
+	$ django-admin
+- start django project (django-admin, subcommand, name)
+	$ django-admin startproject ira_django_project
+	- folder ira_django_project should be in dir
+	- open folder in text editor or view tree of current dir
+
+$ tree .
+.
+├── ira_django_project
+│   ├── __init__.py
+│   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+└── manage.py
+	
+- manage.py allows us to run command line commands
+- settings.py under ira_django_project -- use to change configuration of app
+	- will be changing as we go along
+	- SECRET_KEY -- adds security enhancement to django
+- urls.py
+	- use this for redirect of urls
+	- look at urlpatterns (<type list>)
+- wsgi.py (pronounced like whiskey)
+	- how our webapp and webserver communicate
+
+- to open the application:
+	- $ python manage.py runserver
+	- migration warnings will be thrown
+	- http://127.0.0.1 == localhost
+	- e.g. localhost:8000 will also work (local host with port 8000)
+	- to nav to admin:
+		- http://localhost:8000/admin
+		- enabled by urlpatterns in url.py
+	- CTRL+C to stop server in terminal
+	- with DEBUG=True, out website should reflect any changes in real time.
+
+
+
+
+
+
+
+
