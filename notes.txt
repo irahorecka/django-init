@@ -49,6 +49,98 @@ $ tree .
 
 
 
+>>> TUTORIAL 2 <<<
+https://www.youtube.com/watch?v=a48xeeo5Vnk
+
+- a single project can creat multiple apps
+	- e.g. the blog application is an object (almost)
+	- drag and drop of apps to different projects is doable
+
+- create a new django app (python, manage.py, startapp, app_name)
+	- $ python manage.py startapp blog
+- let's take a look at the tree structure of our dir:
+
+$ tree .
+.
+├── blog
+│   ├── __init__.py
+│   ├── admin.py
+│   ├── apps.py
+│   ├── migrations
+│   │   └── __init__.py
+│   ├── models.py
+│   ├── tests.py
+│   └── views.py
+├── db.sqlite3
+├── ira_django_project
+│   ├── __init__.py
+│   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+└── manage.py
+
+- notice the blog directory with its own structure
+	- a lot of files created simply by creating the blog app -- could be intimidating to some. 
+- NOTE: if no db.sqlite3 present in project directory, create db.sqlite3 by running:
+	- $ python manage.py migrate
+
+- in blog/views.py, add line:
+	from django.http import HttpResponse
+	- build a homepage navigator here
+- then, make blog/urls.py to map urls to correspond to each views.py method
+	- write something similar to the urls.py file in the project dir
+	- import views in urls.py
+		from . import views
+	- set path to home with name 'blog-home'
+		- be detailed with the name
+	- import include from django.urls (urls.py in ira_django_project dir) to specify url routing
+
+- NOTE: disabling pycache dir formation will allow you to view your server as it changes without searching cache
+	- to do this, go to your virtualenv and write:
+	$ export PYTHONDONTWRITEBYTECODE=1
+
+- if you type localhost:8000/blog:
+	- look at ira_django_project/urls.py
+	- look for 'blog/' in urlpatterns
+	- look at include('blog.urls')
+		- send an empty string (chop off 'blog/' to '') to blog.urls
+		- look at the urlpatterns in blog dir (notice the empty route)
+- if we want to look up localhost:8000/blog/about
+	- ira_django_project/urls.py will look for blog/
+	- then it will send an empty string to blog.urls ''
+	- finally, it will look for 'about/' in urlpatterns
+		- call module in second arg in path('about/', args, kwargs)
+- if we change the blog reroute to blog_dev (ira_django_project/urls.py), we'd have to change /blog to /blog_dev
+	- same for blog/about to blog_dev/about
+
+- we add trailing slashes to urlpatters because by default it will stick it on(?)
+	- makes it easier to debug
+
+- if we want to go to the homepage via localport:8000, we will have to change:
+	- (in urls.py -- ira_django_project) add an empty path
+	- change path('blog/', include('blog.urls')) to path('', include('blog.urls'))
+
+$ tree .
+.
+├── blog
+│   ├── __init__.py
+│   ├── admin.py
+│   ├── apps.py
+│   ├── migrations
+│   │   └── __init__.py
+│   ├── models.py
+│   ├── tests.py
+│   ├── urls.py
+│   └── views.py
+├── db.sqlite3
+├── ira_django_project
+│   ├── __init__.py
+│   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+└── manage.py
 
 
 
