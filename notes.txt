@@ -316,7 +316,7 @@ https://www.youtube.com/watch?v=1PkNiYlkkjo
 	- pencil is edit
 	- + is add
 
-tree .                                                                                            ─╯
+tree .                                                                                            
 .
 ├── blog
 │   ├── __init__.py
@@ -361,6 +361,165 @@ tree .                                                                          
 
 
 
+
+
+>>> TUTORIAL 5 <<< 
+https://www.youtube.com/watch?v=aHC3uTkT9r8
+
+- django has its own built in ORM
+	- ORM = object relational mapper
+		- allows us to access our DB in an OOP way
+		- use different databases without changing code
+			- sqlite
+			- postgresql
+		- still same code to talk with database
+
+- we will use sqlite for developing, postgresql for production
+- we can rep database structure as classes in django
+	- these classes are called models
+- go to models.py in the blog dir
+- we have to think about what we want to save to db, e.g.
+	- user (django has this built in)
+	- posts
+
+- let's create a Post class to add posts to db
+	- create Post class that inherits from models.Model
+	- now create what we will store, e.g.:
+		- title = models.CharField(max_length=100)  # max char len
+		- use models.TextField() for large text body
+		- use models.DateTimeField(default=timezone.now) 
+			- for above, import timezone from django.utils
+		- auto_now=True  # is update dateposted to current time when updated
+		- auto_now_add = True  # only when the obj was created
+	- now we want to import user attributes
+		- from django.contrib.auth.models import User
+			- pass this into: models.ForeignKey(User, on_delete=models.CASCADE). # delete posts if user deleted
+			- on_delete means what to do if user is deleted
+
+- we must rerun migrations to reflect these changes in the db
+	- python manage.py migrations
+	- you'll notice that 0001_init.py was made in the blog/migrations dir
+		- this fill will be run when you migrate the db
+
+- we can view the SQL code that will be run when we migrate the db
+	- in our case, we run:
+		- python manage.py sqlmigrate 0001
+		- we will see the SQL code it will run
+	- the models.py code ran the SQL code for us
+		- we don't need to know SQL
+	- one of the great traits of ORM
+	- now we can reflect these changes to the database:
+	- python manage.py migrate
+
+- migrations are useful because we can change db even after it is created and there is content
+	- using migrate allows us to make these changes
+
+- we can run the django-python shell by running:
+	- python manage.py shell
+	- this is a great way to look at the db in a python env
+	- e.g.:
+		from blog.models import Post
+		from django.contrib.auth.models import User
+		User.objects.all()  # get all users
+		User.objects.first()  # get first user
+		User.objects.filter(username='irahorecka')  # get user by name
+		# sometimes, the above code can give back multiple users.
+		User.objects.filter(username='irahorecka').first()  # get first user by key
+		user = User.objects.filter(username='irahorecka').first()  # assign to var
+		user.id  # get id
+		user.pk  # get user primary key
+		user = User.objects.get(id=1)  # get user by id
+
+- let's make a new post with the author as user
+	- check posts in teh Post table:
+		Post.objects.all()
+	- make post
+		post_1 = Post(title='Blog 1', content='First Post Content!', author=user)
+			- for our Post, datetime should be automatically filled
+		- we have to save post_1 to the db for it to reflect the change
+			post_1.save()
+	- check content of db in detail
+		- make a __str__ method in Post, return title
+		Post.objects.all() 
+	- to make another post using user id for author id:
+		post_2 = Post(title='Blog 2', content='Second Post Content!', author_id=user.id)
+	- assign first post to var and return attributes
+		post = Post.objects.first()
+		post.content  # (find content of post) -- content is a field we assigned
+		post.date_posted  # datetime this blog post was posted
+		post.author  # returns user obj -- even access user's attribute
+		poast.author.email  # get the author's email address
+	- get all posts created by the user (user is a var we assigned)
+		user.post_set. # returns obj
+		# run queries against user.post_set
+		user.post_set.all()  # get all posts authored by this user
+	- create a post by the user using user var
+		user.post_set.create(title='Blog 3', content='Third post content!')
+		- this way, we don't have to assign user (already instantiated) nor do we have to call post_x.save()
+
+- how to integrate db data to our website
+	- open blog/views.py
+	- from .models import Post (db instance)
+	- set key of context to Post.object.all()
+
+- change datetime format
+	- post.date_posted|date:"F d, Y"  # for date formatting to April 22, 2019, e.g.
+- to see our post (Post) db in our admin page, we must register the obj with admin
+	- go to blog/admin.py to register your model
+	- from .models import Post  # import our model
+	- admin.site.register(Post)  # register our db obj
+	- you should see it on your admin page
+		- you can go to the post obj and modify them via the browser (in admin)
+		- i.e. change content, author, etc.
+
+tree .                                                                                            
+.
+├── README.md
+├── ira_django_project
+│   ├── blog
+│   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   │   ├── __init__.cpython-37.pyc
+│   │   │   ├── admin.cpython-37.pyc
+│   │   │   ├── apps.cpython-37.pyc
+│   │   │   ├── models.cpython-37.pyc
+│   │   │   ├── urls.cpython-37.pyc
+│   │   │   └── views.cpython-37.pyc
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── migrations
+│   │   │   ├── 0001_initial.py
+│   │   │   ├── __init__.py
+│   │   │   └── __pycache__
+│   │   │       ├── 0001_initial.cpython-37.pyc
+│   │   │       └── __init__.cpython-37.pyc
+│   │   ├── models.py
+│   │   ├── static
+│   │   │   └── blog
+│   │   │       └── main.css
+│   │   ├── templates
+│   │   │   └── blog
+│   │   │       ├── about.html
+│   │   │       ├── base.html
+│   │   │       └── home.html
+│   │   ├── tests.py
+│   │   ├── urls.py
+│   │   └── views.py
+│   ├── db.sqlite3
+│   ├── ira_django_project
+│   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   │   ├── __init__.cpython-37.pyc
+│   │   │   ├── settings.cpython-37.pyc
+│   │   │   ├── urls.cpython-37.pyc
+│   │   │   └── wsgi.cpython-37.pyc
+│   │   ├── asgi.py
+│   │   ├── settings.py
+│   │   ├── urls.py
+│   │   └── wsgi.py
+│   └── manage.py
+└── notes.txt
+		
 
 
 
