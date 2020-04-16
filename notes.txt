@@ -292,6 +292,80 @@ $ tree .
 
 
 
+>>> TUTORIAL 4 <<<
+https://www.youtube.com/watch?v=1PkNiYlkkjo
+
+- we must create an admin user to access admin capabilities
+- $ python manage.py createsuperuser
+	- before we do this, we must create a database
+	- $ python manage.py makemigrations
+		- prepares django to update the database
+		- doesn't run changes yet
+	- $ python manage.py migrate
+		- should be ok and auth_table should exist
+
+- try createsuperuser again, add username, email, and password
+- now try signing in to /admin - it should work
+- django stores the hashing of our passwords automatically
+- click add user in the user path (admin) to make new user
+	- add members that are allowed to manipulate the admin page
+	- different levels of permissions are allowed
+	- deleting users is also possible here
+
+- we can also see recent actions in /admin page - kind of like version control
+	- pencil is edit
+	- + is add
+
+tree .                                                                                            ─╯
+.
+├── blog
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-37.pyc
+│   │   ├── admin.cpython-37.pyc
+│   │   ├── apps.cpython-37.pyc
+│   │   ├── models.cpython-37.pyc
+│   │   ├── urls.cpython-37.pyc
+│   │   └── views.cpython-37.pyc
+│   ├── admin.py
+│   ├── apps.py
+│   ├── migrations
+│   │   ├── __init__.py
+│   │   └── __pycache__
+│   │       └── __init__.cpython-37.pyc
+│   ├── models.py
+│   ├── static
+│   │   └── blog
+│   │       └── main.css
+│   ├── templates
+│   │   └── blog
+│   │       ├── about.html
+│   │       ├── base.html
+│   │       └── home.html
+│   ├── tests.py
+│   ├── urls.py
+│   └── views.py
+├── db.sqlite3
+├── ira_django_project
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-37.pyc
+│   │   ├── settings.cpython-37.pyc
+│   │   ├── urls.cpython-37.pyc
+│   │   └── wsgi.cpython-37.pyc
+│   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+└── manage.py
+
+
+
+
+
+
+
+
 
 
 
