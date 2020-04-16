@@ -49,6 +49,8 @@ $ tree .
 
 
 
+
+
 >>> TUTORIAL 2 <<<
 https://www.youtube.com/watch?v=a48xeeo5Vnk
 
@@ -141,6 +143,170 @@ $ tree .
 │   ├── urls.py
 │   └── wsgi.py
 └── manage.py
+
+
+
+
+
+>>> TUTORIAL 3 <<<
+https://www.youtube.com/watch?v=qDwdMDQ8oX4
+
+- we want to use templates in our html to save us from having to write large html5 files
+- to do this we want to make a templates dir in our blog app dir
+	- in our blog dir, $ mkdir templates
+- by default django looks for templates in each of our installed apps
+- create another dir in our templates dir with the same name as our app (blog) (django convention)
+	- in our templates dir, $ mkdir blog
+
+- within this blog dir, (in our case) add our htmls
+	- home.html
+	- about.html
+- fill these html appropriately
+
+- configure these htmls in the ira_django_project/blog/apps.py file
+	- add name of class BlogConfig to our ira_django_projects/settings.py file
+	- in INSTALLED_APPS, add 'blog.apps.BlogConfig' at index 0
+	- this is a common process, get used to adding applications to this list
+
+- modify reroute in blog/views.py file
+	- e.g. in our home func (home(func)), write this:
+		return render(request, 'blog/home.html')
+		- this will look in the templates dir as the base dir
+		- i.e. it will fing blog/home.html in templates/
+	- the render func returns an http response in the background
+	- runserver and you can inspect view pagesource for new content (i.e. new redirect)
+
+- if we make a redirect to about.html in blog/templates/blog/, we do not need to add this configuration to our apps.py
+	- note, 'blog' is already added as a var in class BlogConfig(AppConfig)
+
+- now let's try to add content to our page in views.py
+	- make a list, dict (JSON like obj) in var posts
+	e.g. 
+	posts = [
+    		{
+        "author": 'IraH',
+        "title": 'Blog Post 1',
+        "content": 'First post content',
+        "date_posted": 'April 15, 2020'  # usually a datetime obj
+    		}
+	]
+	- now in our home func, add local var context, a dict, with 'posts': posts
+	- pass context as third arg to render
+
+- django has a templating engine that allows us to write code within our html file
+	- very similar to jinja2
+	- every iterator or conditional must have an end
+	{% for i in x %}
+	{% end for %}
+	- use double curly braces to call var
+	{{ i }}
+
+- loop over context looking for keys and values - add this to your html to generate static language dynamically
+- conditionals using django template:
+	{% if x %}
+		do something
+	{% else %}
+		do something
+	{% endif %}
+
+- use template inheritance to concise code and keep unique to each route
+- i.e. make a page that has html properties shared among your html files
+- child pages (i.e. html files that inherit base) will override the base template
+	- delete base template properties in your children pages
+- making a base template
+	- make base.html under blog/templates/blog
+	- write your base html page (doctype, html, headers, etc)
+	- use {% block content %}{% endblock %} where content children pages will vary
+	- inherit base.html in children pages by:
+		{% extends "blog/base.html" %}
+	- now inherit this base template in your children pages as follows:
+		{% block content %}
+		    {% for post in posts %}
+        		<h1>{{ post.title }}</h1>
+       			<p>By {{ post.author }} on {{ post.date_posted }}</p>
+        		<p>{{ post.content }}</p>
+    		{% endfor %}
+		{% endblock content %}
+
+- use bootstrap to add HTML JS and CSS styling to your page easily
+	- copy code from site: https://getbootstrap.com/docs/4.3/getting-started/introduction/#starter-template
+- this is where template inheritance shines - only change to base, not to all pages
+	- copy code in the right place (head to head, body to body) in base.html
+	- make <div class="container"></div> to give good padding.
+- look at correy's html code snippets here https://github.com/CoreyMSchafer/code_snippets
+- CSS and JS need to be stored in a static directory in our app
+	- make a directory "static" under ira_django_project/blog directory
+	- navigate to static and mkdir "blog" (same name as our app)
+	- create main.css file - copy corey's snippet put in here
+	- at top of our base.html, input {% load static %} to load css file from static dir
+	- add main.css in line 13 of base.html
+		- static generates an absolute url of the static files - access blog/main.css
+
+- use the django url tag to get absolute path to a url pattern
+	- e.g. {% url 'blog-home' %} means open up the url for name='blog-home' in urlpatterns
+
+$ tree .
+.
+├── blog
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-37.pyc
+│   │   ├── admin.cpython-37.pyc
+│   │   ├── apps.cpython-37.pyc
+│   │   ├── models.cpython-37.pyc
+│   │   ├── urls.cpython-37.pyc
+│   │   └── views.cpython-37.pyc
+│   ├── admin.py
+│   ├── apps.py
+│   ├── migrations
+│   │   ├── __init__.py
+│   │   └── __pycache__
+│   │       └── __init__.cpython-37.pyc
+│   ├── models.py
+│   ├── static
+│   │   └── blog
+│   │       └── main.css
+│   ├── templates
+│   │   └── blog
+│   │       ├── about.html
+│   │       ├── base.html
+│   │       └── home.html
+│   ├── tests.py
+│   ├── urls.py
+│   └── views.py
+├── db.sqlite3
+├── ira_django_project
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-37.pyc
+│   │   ├── settings.cpython-37.pyc
+│   │   ├── urls.cpython-37.pyc
+│   │   └── wsgi.cpython-37.pyc
+│   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+└── manage.py
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
