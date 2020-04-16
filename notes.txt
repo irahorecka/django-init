@@ -524,6 +524,238 @@ tree .
 
 
 
+>>> TUTORIAL 6 <<<
+https://www.youtube.com/watch?v=q4jPR-M0TAQ
+
+- let's make a user registration page
+	- user can create an account on website
+	- log in and log out via window
+		- not enough to use admin window all the time
+
+- user account form will have its own templates, etc.
+	- create a new app inside of our project for user login
+	- we can update user-like setting in the user app
+
+- python manage.py startapp users
+	- create users page where users can create accounts via the frontend 
+	- we must first add our new app in our INSTALLED_APPS list in our settings.py file
+		- "users.apps.UsersConfig"
+
+- now let's modify the users/views.py file
+	- make func register that takes in request
+	- django takes care of a lot of user input validation for us
+		- don't reinvent the wheel
+	- use the user creation form already in Django
+		from django.contrib.auth.forms import UserCreationForm
+	- creat instance of form in func register
+		form = UserCreationForm()
+	- return render of this instance with key that will be picked up by users/register.html
+		return render(request, 'users/register.html', {'form': form})
+
+- then make a templates/ dir in users/
+	- now make another subdir called users/ in templates/
+	- make register.html in this subdir
+	- make page similar to our about.html child page (i.e. django templating)
+		- extend blog/base.html
+	- create a new div tag in block content
+		- input form with method POST
+		- we must add a csrf token -- hidden tag
+			- cross site request forgery token -- protection i.e. security
+			- must add to every form
+			{% csrf_token %}
+		- now within here add a fieldset tag with bootstrap class
+			- within here, add legend with bootstrap class
+	- create another div tag for button
+		- use bootstrap class
+	- add another div under form for login, do you already have an account button
+		- add link to sign in page using the anchor tag (<a>)
+			- label it Sign In
+
+- now let's create a url pattern that users can use to navigate to this page
+	- go into ira_django_project/urls.py
+	from users import views as user_views
+	- in index 1 of urlpatterns, add
+		path('register/', user_views.register, name='register')
+
+- use as_p to render our content in paragraph form
+	- go to register.html
+	- fix {{ form }} to {{ form.as_p }}		
+
+- we must register any POST request (i.e. new user) to the db
+	- we must parse the post information
+	- write the logic under register func in views.py
+	- so if we get a post request, make teh UserCreationFrom take in request.Post
+		- else take in no param
+	def register(request):
+    		if request.method == 'POST':
+        		form = UserCreationForm(request.POST)
+    		else:
+        		form = UserCreationForm()
+    		return render(request, 'users/register.html', {'form': form})
+	- we have to validate our form data
+		- do this under request.method conditional
+			if form.is_valid():  # i.e. if submitted
+				username = form.cleaned_data.get('username')  # username is default by django
+		
+	- we should have flash message to show we have received the data
+		- will only display once, disappear after
+		from django.contrib import messages
+		- different types of messages
+			messages.debug
+			messages.info
+			messages.success
+			messages.warning
+			messages.error
+		- add this after our username var assignment
+			messages.success(request, f"Account created for {username}!")
+		
+	
+	- now we want to navigate folks away from the registration page
+		- redirect to the homepage
+		- import redirect from django.shortcuts
+		- add in if form.is_valid()
+			return redirect('blog-home')
+
+	- before we do this, we must complete the addition of our flash message to our base.html
+		- we add here because this page is displayed in every page
+		- add this right above our {% block content %}:
+		{% if messages %}
+			{% for message in messages %}
+				// input message here...
+			{% endfor %}
+		{% endif %}
+		- add div with bootstrap class 
+		<div class="alert alert-{{ message.tags }}">
+			{{ message }}
+		</div>
+
+	- make sure your password is a valid password specified by django
+		- if not, validation errors will be thrown on the form
+	- let's get the user created if the form is valid
+		if form.is_valid():
+			form.save()  # easy!
+	- now, create new user in register page and check if it's present in the admin page under User
+		- and it is
+
+- let's create an email field for the new user registration form
+	- we must add an email field to the form var itself
+	- we need a new form that inherits from django's form
+		- users/forms.py
+	- add this to our new forms
+	from django import forms
+	from django.contrib.auth.models import User
+	from django.contrib.auth.forms  import UserCreationForm
+	- create class that inherits UserCreationForm
+		- within this class create a class named Meta
+		- specify the model Meta should interact with (model = User)
+			- now create fields that will show on our form (in order)
+			fields = ['username', 'email', 'password1', 'password2']  # password1 is init password, password2 is confirmation
+		- class Meta
+			- gives us nested namespace for configurations
+			- keeps this configuration in one place
+	
+	- go to views.py and inherit the new class we made
+		from .forms import UserRegisterForm
+		- change UserCreationForm() to our new class UserRegistrationForm()
+		- delete:
+		from django.contrib.auth.forms import UserCreationForm
+	- now our new register form should be in place
+		- test by creating account and verifying in /admin
+
+- let's work on styling for our register page
+	- match bootstrap of our home page
+	- add appropriate error messages
+
+	- don't work on styling in our forms.py page, but in our templates
+	- let's work with crispy forms
+	pip install django-crispy-forms
+
+	- add 'crispy_forms' after index 1 of our INSTALLED_APPS list in settings.py
+	- add CRISPY_TEMPLATE_PACK = 'bootstrap4' at the bottom of our settings.py
+		- reconfigure crispy to take in bootstrap4 (default is bootstrap2)
+
+	- open register.html
+		- add {% load crispy_forms_tags %} to line 2
+		- remove {% form.as_p %} to {% form|crispy %} -- crispy will take care of this (pipe in crispy attributes)
+	
+	- the application should now have better error handling feedback due to the crispy bootstrap
+
+tree .                                                                                            
+.
+├── README.md
+├── ira_django_project
+│   ├── blog
+│   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   │   ├── __init__.cpython-37.pyc
+│   │   │   ├── admin.cpython-37.pyc
+│   │   │   ├── apps.cpython-37.pyc
+│   │   │   ├── models.cpython-37.pyc
+│   │   │   ├── urls.cpython-37.pyc
+│   │   │   └── views.cpython-37.pyc
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── migrations
+│   │   │   ├── 0001_initial.py
+│   │   │   ├── __init__.py
+│   │   │   └── __pycache__
+│   │   │       ├── 0001_initial.cpython-37.pyc
+│   │   │       └── __init__.cpython-37.pyc
+│   │   ├── models.py
+│   │   ├── static
+│   │   │   └── blog
+│   │   │       └── main.css
+│   │   ├── templates
+│   │   │   └── blog
+│   │   │       ├── about.html
+│   │   │       ├── base.html
+│   │   │       └── home.html
+│   │   ├── tests.py
+│   │   ├── urls.py
+│   │   └── views.py
+│   ├── db.sqlite3
+│   ├── ira_django_project
+│   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   │   ├── __init__.cpython-37.pyc
+│   │   │   ├── settings.cpython-37.pyc
+│   │   │   ├── urls.cpython-37.pyc
+│   │   │   └── wsgi.cpython-37.pyc
+│   │   ├── asgi.py
+│   │   ├── settings.py
+│   │   ├── urls.py
+│   │   └── wsgi.py
+│   ├── manage.py
+│   └── users
+│       ├── __init__.py
+│       ├── __pycache__
+│       │   ├── __init__.cpython-37.pyc
+│       │   ├── admin.cpython-37.pyc
+│       │   ├── apps.cpython-37.pyc
+│       │   ├── forms.cpython-37.pyc
+│       │   ├── models.cpython-37.pyc
+│       │   └── views.cpython-37.pyc
+│       ├── admin.py
+│       ├── apps.py
+│       ├── forms.py
+│       ├── migrations
+│       │   ├── __init__.py
+│       │   └── __pycache__
+│       │       └── __init__.cpython-37.pyc
+│       ├── models.py
+│       ├── templates
+│       │   └── users
+│       │       └── register.html
+│       ├── tests.py
+│       └── views.py
+└── notes.txt
+
+
+	
+	
+
+
+
 
 
 
