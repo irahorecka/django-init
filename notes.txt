@@ -751,6 +751,119 @@ tree .
 └── notes.txt
 
 
+
+
+
+>>> TUTORIAL 7 <<<
+https://www.youtube.com/watch?v=3aVqWaLjqS4
+
+- create log in and log out capabilities with log-in privileges for the user
+- login is taken care of by django (mostly)
+	- import login logout views within our projects urls.py
+	from django.contrib.auth import views as auth_views  # lot of views import - make new alias for name
+	...  # within urlpatterns
+	path('login/', auth_views.LoginView.as_view, name='login'),
+    	path('logout/', auth_views.LogoutView.as_view, name='logout')
+
+	- what we did here is called class-based views
+	- builtin views for login and logout will handle the forms and logic for us
+		- templates will not be handled
+	- put our login html page in the user/template dir
+		- must tell django we want this instead - pass template_name kwarg in as_view method
+		path('login/', auth_views.LoginView.as_view(template_name='users/login.html'), name='login'),
+		path('logout/', auth_views.LogoutView.as_view(template_name='users/logout.html'), name='logout')
+	- build the login.html template
+		- make this similar to the register.html template
+	- now with href under 'Need An Account?', use {% url 'register' %} to extract the url reference to the registration page
+		- fix this for register.html as well ('Already have an account?') --> {% url 'login' %}
+
+	- currently we get a 404 error if we try to log in. it tries to pull up a url page that doesn't have a view attached to it.
+		- accounts/profile/
+		- django defaults login to go to the account profile page, which may be something we don't want
+			- rather redirect to the home page.
+		- go to project settings.py and at the very bottom write:
+		LOGIN_REDIRECT_URL = 'blog-home'
+
+			- this should allow us to redirect to the home page
+			- we should be able to log in now...
+			- we can tell this because we have admin privileges
+			- test this by logging out of admin and trying to access admin again
+				- reconfirm by logging in the user frontent and accessing admin - it should work
+		
+- let's allow users to access the login page after they register for an account
+	- chage success message in users/views.py and the redirect url
+	- go to projects urls.py and look at logout
+		- if we leave as_view without any args, when we log out our view looks just like when we log out of /admin
+		- the page gives us a login page - this is the admin login page, which is not what we want
+	- we need to create a logout template in our users template dir
+
+	- create users/logout.html and paste register.html content inside
+		- we will not need any forms
+		- get rid of crispy forms, <form> ... </form> content, and div class="content-section"
+		- only keep the div class="border-top pt-3" to have the login redirect
+		- add h2 header and adjust labeling of login link
+		- get rid of class="ml-2" because we no longer have text to the left
+	- this page should now work
+	- the logout functionality should be reflected when you try to log into the admin page
+	
+- now, let's adjust the navigation bar on the home page so those who are logged in can have a different nav bar than those who are logged out.
+	- those who aren't logged in should see the login button on the nav bar
+	- those who are logged in should see the logout button on the nav bar
+
+	- let's open up the base template (contains nav) and put conditional to check for login state
+		- let's fix the url nav link for login and register 
+			e.g. "#" --> "{% url login %}"
+		- django has a feature that allows us to look at the current user during a session
+			- has attr is_authenticated that allows us if they are currently logged in
+		- let's put in this conditional above our nav hyperlinks (login and register)
+
+	- this simple fix should reflect our dynamic nav bar on our home page dependent on our login state
+
+- putting restrictions on certain routes - i.e. you can only go to those routes if you are currently logged in
+	- e.g. if i want to edit my profile on twitter without being logged in, they will redirect you to the login page first
+
+	- let's create a route to the user's profile
+	- add this to users/views.py
+	def profile(request):
+	    return render(request, 'users/profile.html')  # simple for now
+	- make users/profile.html and copy content from login.html
+		- delete everything in the block content template
+		- for now have an h1 tag that reflects the username
+			{{ user.username }}  # django method
+	- now put this redirect into our ira_django_project/urls.py urlpatterns list
+	path('profile/', user_views.profile, name='profile')
+
+	- let's also add this page to the nav bar if the user is logged in
+		- i.e. the is_authenticated conditonal, place this:
+		<a class="nav-item nav-link" href="{% url 'profile' %}">Profile</a>
+	- the redirect should now work just fine
+		- however, if we log out, we can still access the profile route by typing into the url
+		- though no account is listed, this accessibility should be restricted
+
+	- the user should be logged in to access this route
+		- this is easy to do - use the django provided login-required decorator
+		- add this to users/views.py profile func
+		from django.contrib.auth.decorators import login_required
+		@login_required  # above profile func
+			- note, if we are using class-based views, the login_required is a little bit different
+			- we haven't covered this just yet...
+
+		- we should now get a 404 error if we try to access the profile route when logged out
+			- we need to django where it can find our login route if this scenario occurs
+		- add this to the settings.py at the bottom
+		LOGIN_URL = 'login'
+			- 'login' is the url pattern we gave to our login route
+		- this should work now, but look at the url of our login page we accessed:
+		http://localhost:8000/login/?next=/profile/
+			- django is keeping track of where to go after we log in (?next=/profile/)
+			- we will go to profile page after we log in - django took care of this for us
+
+		- now, the profile page is a page only accessible by people who have logged in
+		- if they haven't logged in prior to accessing the profile page, django will ask the user to log in
+	
+	
+
+
 	
 	
 

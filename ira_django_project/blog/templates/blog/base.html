@@ -33,8 +33,13 @@
             </div>
             <!-- Navbar Right Side -->
             <div class="navbar-nav">
-                <a class="nav-item nav-link" href="#">Login</a> <!-- # are dead links -->
-                <a class="nav-item nav-link" href="#">Register</a>
+                {% if user.is_authenticated %}  <!-- logged in -->
+                    <a class="nav-item nav-link" href="{% url 'profile' %}">Profile</a>
+                    <a class="nav-item nav-link" href="{% url 'logout' %}">Logout</a> <!-- # are dead links -->
+                {% else %}  <!-- logged out -->
+                    <a class="nav-item nav-link" href="{% url 'login' %}">Login</a>  <!-- wanna log in? -->
+                    <a class="nav-item nav-link" href="{% url 'register' %}">Register</a>
+                {% endif %}
             </div>
         </div>
         </div>
