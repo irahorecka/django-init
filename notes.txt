@@ -1178,6 +1178,265 @@ tree .
     │       └── register.html
     ├── tests.py
     └── views.py
+
+
+
+
+
+>>> Tutorial 9 <<<
+https://www.youtube.com/watch?v=CQ90L5jfldw&list=PL-osiE80TeTtoQCKZ03TU5fNfx2UY6U4p&index=9
+
+- updating our user and profile
+	- we need to create some forms, similar to the user register form
+	- open up users/forms.py file
+
+- we will create a model form
+	- allows us to create a form that will work with a specific db model
+	- a form that update our user model (what we want)
+	- we want to create a new class (similar to our user register form) (don't include password)
+	class UserUpdateForm(forms.ModelForm):
+		email = forms.EmailField()
+
+		class Meta:
+        		model = User
+        		fields = ['username', 'email']  # only want to work with usrename and email
+
+	- later on we will enabel user password change - but not here
+	- notice there is no profile pic modification capabilities; this will be in our profile model, not user model
+	- we must import our Profile class to work with it i.e. change the image
+	class ProfileUpdateForm(forms.ModelForm):
+		class Meta:
+        		model = Profile
+        		fields = ['image']
+
+	- use the UserUpdateForm to update user info, ProfileUpdateForm to update (in our case) the image
+	- this will look like just one form on the template
+
+- now let's modify users/views.py
+	- import the user and profile form just created:
+	from .forms import UserRegisterForm, UserUpdateForm, ProfileUpdateForm
+
+	- then modify the profile func like this:
+	@login_required
+	def profile(request):
+	    u_form = UserUpdateForm()
+	    p_form = ProfileUpdateForm()
+
+	    context = {
+        	'u_form': u_form,
+	        'p_form': p_form
+	    }
+    
+	    return render(request, 'users/profile.html', context)
+
+	- let's modify the profile.html template
+		- copy the form tags from register.html and paste into profile.html
+		- we are using crispy form tags, make sure you are importing them at the top of the html file
+	
+	- for our profile template, we will have two profiles with different fields
+		- but keep this in one html page (profile.html) (change crispy form load to our new keys)
+		{{ u_form|crispy }}
+                {{ p_form|crispy }}
+	- change legend title and submit button to an appropriate name
+	- make sure to add a specific encoding type to our form
+		- allows forms to pass image data for our profile pic properly
+		- write this as our form tag to allow this feature
+		<form method="POST" enctype="multipart/form-data">
+			- we need to save the image in the background
+
+	- our profile page (with the cool editing features) should boot up just fine now
+		- note: we want to have current username, email, etc. filled in as default for the input boxes
+		- also, we want to process the form information when we submit it
+			- currently, we post this info back to the forms.py file
+	
+- filling in default values for boxes in user modification (profile) page
+	- go to views.py file in users
+	- populate these regular forms with the info of current users
+	- pass in instance of the object that it expects (the user)
+		- UserUpdateForm -- user obj
+		- ProfileUpdateForm -- profile obj
+
+	- go to our profile func and pass these instances in like this
+	u_form = UserUpdateForm(instance=request.user)  # user info, like email, username, etc
+	p_form = ProfileUpdateForm(instance=request.user.profile)  # profile info, like image
+
+	- put a POST conditional in the profile func (similar to our register func)
+	    if request.method == 'POST':
+	        u_form = UserUpdateForm(instance=request.user)
+        	p_form = ProfileUpdateForm(instance=request.user.profile)
+	    else:
+        	u_form = UserUpdateForm(instance=request.user)
+	        p_form = ProfileUpdateForm(instance=request.user.profile)
+
+	- so if we get a post, we must pass post data
+	- with the profile form, we will be getting some additional data (file data with the request) -- image upload
+	if request.method == 'POST':
+	        u_form = UserUpdateForm(request.POST, instance=request.user)
+        	p_form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user.profile)
+	    else:
+        	u_form = UserUpdateForm(instance=request.user)
+	        p_form = ProfileUpdateForm(instance=request.user.profile)
+
+	- now we must make sure that the data coming in are both valid, if not don't save any data
+		- similar to user register form
+	- if they are both valid, save both forms
+	    if request.method == 'POST':
+        	u_form = UserUpdateForm(request.POST, instance=request.user)
+	        p_form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user.profile)
+	        if u_form.is_valid() and p_form.is_valid():
+	            u_form.save()
+	            p_form.save()
+	    else:
+	        u_form = UserUpdateForm(instance=request.user)
+        	p_form = ProfileUpdateForm(instance=request.user.profile)
+
+	- if it works, tell the user the update was successful and redirect them back to the profile page
+		- add a success message and redirect, like this:
+		if request.method == 'POST':
+	        u_form = UserUpdateForm(request.POST, instance=request.user)
+        	p_form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user.profile)
+	        if u_form.is_valid() and p_form.is_valid():
+        	    u_form.save()
+	            p_form.save()
+        	    messages.success(request, "Your accound has been updated!.")
+	            return redirect('profile')  # name for url pattern to login page
+
+	- we want to return redirect within this conditional here (instead of down at the bottom of func) because:
+		- this is called the post get redirect pattern
+		- this is when you reload the page and it says are you sure you want to confirm resubmission?
+			- your browser is telling you you will run another post request when you reload the page
+		- this early return will cause the browser to get a GET request rather than POST
+
+	- NOW the update you make in the profile route looks good
+	- go to admin to make sure this is executed properly
+		- both user and profile features look good
+
+- now we want to automatically resize images when we upload them
+	- CSS set to 125px for largest image
+		- no use in having a large 4000px image
+		- takes up a lot of space in the file system
+		- slows down your browser due to it having to send a large file image every time it is requested
+
+	- use pillow to resize these image -- backend image handler
+	- we need to override the save method of our profile model
+	- go to users/models.py
+	- add this to our Profile class
+	from PIL import Image
+	def save(self):
+        	# method that is run after our model is saved -- override default save method
+	        super().save()  # run the save method of our parent save method (call super)
+
+        	img = Image.open(self.image.path)
+
+	- we initially want to save the image using the parent save method
+	- then, let's open the image using PIL.Image
+	- now it's time to resize this
+		- so we have 125px in the main CSS, so let's resize somewhere close to that (300px for now)
+		- if img is larger than this, images will be sized down
+		if img.height > 300 or img.width > 300:
+           	    output_size = (300, 300)
+	            img.thumbnail(output_size)        
+        	    img.save(self.image.path)
+
+		- what we did here is resize the image if its init height and width > 300
+		- THEN, we save the new image, overriding our previous save
+
+	- there may be other ways to resize images, perhaps you may want to look into this if you are working with larger projects
+	- NOW, if we update or create a new profile with an image, it should be 300x300 if the init image was any larger in any dimension
+
+- let's display the image of the user beside their post
+	- go to our blog/templates/home.html
+	- add this segment of html code between our article and div tags
+	<img class="rounded-circle article-img" src="{{ post.author.profile.image.url }}>"
+		- use the bootstrap rounded-circle css class with tutor's article-img css class
+
+	- NOW, the user profile pic should be alongside their post in the home page
+
+tree .                                                                                           
+.
+├── blog
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-37.pyc
+│   │   ├── admin.cpython-37.pyc
+│   │   ├── apps.cpython-37.pyc
+│   │   ├── models.cpython-37.pyc
+│   │   ├── urls.cpython-37.pyc
+│   │   └── views.cpython-37.pyc
+│   ├── admin.py
+│   ├── apps.py
+│   ├── migrations
+│   │   ├── 0001_initial.py
+│   │   ├── __init__.py
+│   │   └── __pycache__
+│   │       ├── 0001_initial.cpython-37.pyc
+│   │       └── __init__.cpython-37.pyc
+│   ├── models.py
+│   ├── static
+│   │   └── blog
+│   │       └── main.css
+│   ├── templates
+│   │   └── blog
+│   │       ├── about.html
+│   │       ├── base.html
+│   │       └── home.html
+│   ├── tests.py
+│   ├── urls.py
+│   └── views.py
+├── db.sqlite3
+├── ira_django_project
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-37.pyc
+│   │   ├── settings.cpython-37.pyc
+│   │   ├── urls.cpython-37.pyc
+│   │   └── wsgi.cpython-37.pyc
+│   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── manage.py
+├── media
+│   ├── default.jpg
+│   └── profile_pics
+│       ├── Hank_Williams.jpeg
+│       ├── me_arrow.jpeg
+│       ├── me_arrow_sWiq1Sv.jpeg
+│       ├── vaporwave_1.jpeg
+│       ├── vaporwave_1_fb8s8bI.jpeg
+│       └── vaporwave_1_g16IaWF.jpeg
+└── users
+    ├── __init__.py
+    ├── __pycache__
+    │   ├── __init__.cpython-37.pyc
+    │   ├── admin.cpython-37.pyc
+    │   ├── apps.cpython-37.pyc
+    │   ├── forms.cpython-37.pyc
+    │   ├── models.cpython-37.pyc
+    │   ├── signals.cpython-37.pyc
+    │   └── views.cpython-37.pyc
+    ├── admin.py
+    ├── apps.py
+    ├── forms.py
+    ├── migrations
+    │   ├── 0001_initial.py
+    │   ├── __init__.py
+    │   └── __pycache__
+    │       ├── 0001_initial.cpython-37.pyc
+    │       └── __init__.cpython-37.pyc
+    ├── models.py
+    ├── signals.py
+    ├── templates
+    │   └── users
+    │       ├── login.html
+    │       ├── logout.html
+    │       ├── profile.html
+    │       └── register.html
+    ├── tests.py
+    └── views.py
+	
+
+	
 	
 	
 	
