@@ -860,9 +860,327 @@ https://www.youtube.com/watch?v=3aVqWaLjqS4
 
 		- now, the profile page is a page only accessible by people who have logged in
 		- if they haven't logged in prior to accessing the profile page, django will ask the user to log in
-	
-	
 
+tree .                                                                                            
+.
+├── blog
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-37.pyc
+│   │   ├── admin.cpython-37.pyc
+│   │   ├── apps.cpython-37.pyc
+│   │   ├── models.cpython-37.pyc
+│   │   ├── urls.cpython-37.pyc
+│   │   └── views.cpython-37.pyc
+│   ├── admin.py
+│   ├── apps.py
+│   ├── migrations
+│   │   ├── 0001_initial.py
+│   │   ├── __init__.py
+│   │   └── __pycache__
+│   │       ├── 0001_initial.cpython-37.pyc
+│   │       └── __init__.cpython-37.pyc
+│   ├── models.py
+│   ├── static
+│   │   └── blog
+│   │       └── main.css
+│   ├── templates
+│   │   └── blog
+│   │       ├── about.html
+│   │       ├── base.html
+│   │       └── home.html
+│   ├── tests.py
+│   ├── urls.py
+│   └── views.py
+├── db.sqlite3
+├── ira_django_project
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-37.pyc
+│   │   ├── settings.cpython-37.pyc
+│   │   ├── urls.cpython-37.pyc
+│   │   └── wsgi.cpython-37.pyc
+│   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── manage.py
+└── users
+    ├── __init__.py
+    ├── __pycache__
+    │   ├── __init__.cpython-37.pyc
+    │   ├── admin.cpython-37.pyc
+    │   ├── apps.cpython-37.pyc
+    │   ├── forms.cpython-37.pyc
+    │   ├── models.cpython-37.pyc
+    │   └── views.cpython-37.pyc
+    ├── admin.py
+    ├── apps.py
+    ├── forms.py
+    ├── migrations
+    │   ├── 0001_initial.py
+    │   ├── __init__.py
+    │   └── __pycache__
+    │       ├── 0001_initial.cpython-37.pyc
+    │       └── __init__.cpython-37.pyc
+    ├── models.py
+    ├── templates
+    │   └── users
+    │       ├── login.html
+    │       ├── logout.html
+    │       ├── profile.html
+    │       └── register.html
+    ├── tests.py
+    └── views.py
+
+
+
+
+
+>>> TUTORIAL 7 <<<
+https://www.youtube.com/watch?v=FdVuKt_iuSI
+
+- now we want to make the profile dynamic (i.e. add a profile pic)
+- we need to add a field for profile pic
+	- extend field for user model
+	- create model of profile/user with 1to1 rel
+		- i.e. user linked to one profile, profile linked to one user
+
+- need a new model for our profile
+	- go to users/models.py
+	- extend existing user model
+	from django.contrib.auth.models import User
+
+	class Profile(models.Model):
+	    user = models.OneToOneField(User, on_delete=models.CASCADE)
+	- the models.CASCADE means if the user is deleted, also delete the profile
+		- if we delete the profile, we won't delete the user
+	
+	- let's add a profile picture - right below our user dec
+	image = models.ImageField(default='default.jpg', upload_to='profile_pics')
+		- default photo if none is selected
+		- 'profile_pics' is the dir which pics are stored
+	
+	- now make a __str__ method to display what we want to see if print is called
+	def __str__(self):
+	        return f"{self.user.username} Profile"	
+	
+- any time we make changes to our model, it makes changes to our db
+	- this hasn't occurred yet
+		- we must make migrations
+		python manage.py makemigrations
+			- throws an error that says Pillow is not installed
+			- a library for working with image in python
+		pip install pillow
+		- now a new migration file is ready for us (0001_initial.py)
+		- migrate this new file
+		python manage.py migrate
+
+		- this should work
+		- we need to register this model with the admin file of our app (users/admin.py)
+		from .models import Profile
+		admin.site.register(Profile)
+
+- now let's try to add a profile picture
+	- log in and go to admin page
+	- there should be a profile section in the admin table
+		- currently 0 profiles
+		- click add profile and add an image for a user
+	- for testing, add a new profile for a user and don't add an image
+		- check what the default image is
+	
+	- run the django shell to look at these profiles
+	>>> from django.contrib.auth.models import User
+	>>> user = User.objects.filter(username='irahorecka').first()
+	>>> user.profile
+	<Profile: irahorecka Profile>
+	>>> user.profile.image
+	<ImageFieldFile: profile_pics/me_arrow.jpeg>
+	>>> user.profile.image.width
+	1920
+	>>> user.profile.image.height
+	1050
+
+	- for html, we pass the image location to the source attr of an image tag to display in browser
+		- we can use the url attr to find the location
+	>>> user.profile.image.url
+	'profile_pics/me_arrow.jpeg'
+	
+	- if another image of the same name was generated, what would happen?
+		- a hash value would be added to the end of the image name - no override
+
+	- now let's look at NewUser with the default image
+	>>> user = User.objects.filter(username='NewUser').first()
+	>>> user
+	<User: NewUser>
+	>>> user.profile.image
+	<ImageFieldFile: default.jpg>
+
+- notice the new dir profile_pics in the ira_django_project dir
+	- we need to change some settings to change where these images will be saved
+		- also modify how the website will fetch these images
+	- add these to settings.py
+	MEDIA_ROOT = ''  # full path to where django can find uploaded files
+	MEDIA_URL = ''  # how we access these images in the browser
+
+	- convert these to:
+	MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+		- os.path.join will create a viable directory no matter what OS you are on
+		- BASE_DIR is a dir django created for your base directory
+	MEDIA_URL = '/media/'
+	
+	- we must remove the two profiles we made and create them again (these changes will not be reflected)
+		- reload admin page and delete profiles
+		- do the same thing and make new profiles
+	
+	- notice theres a ira_django_project/media/ dir
+		- in here, theres the profile_pics dir
+	- delete ira_django_projects/profile_pics dir since we won't use this anymore
+	
+- let's display this in our UI profile page
+	- go to users/templates/users/profile.html
+		- currently only username is displayed
+		- add photo properties
+	- add profile.html snippets from his snippets directory
+		- make image, email, and username dynamic in the html template
+
+	- now we need to redirect this to our media dir
+		- pull up django docs to manage static files
+		- what we are doing here should be done only in development
+	- we want to modify the urls.py file like this
+	from django.conf import settings
+	from django.conf.urls.static import static
+
+	# add this to the url_patterns list
+	if settings.DEBUG:  # check if we are in a developer environment, i.e. in debug mode
+		urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+	- now we should be able to see our profile image and user email in the profile page
+
+- let's add a default image to our profile for users without image in profile
+	- currently, django is looking for this image in /media/default.jpg
+	- add a default.jpg to the media dir
+- NOTE: you must have a profile built for the new user, this is done via the admin page at the moment
+	- this should be done on the front end for the user to handle
+	- this means that every new user should automatically get a default.jpg profile pic
+
+- give django signal to new user to give this default image
+	- make signals.py in users dir
+		- some put these signals in models.py, but docs recommend this way to avoid import clashes
+	- let's get this written
+	from django.db.models.signals import post_save
+		- this gets fired after an object gets saved
+		- let's get the post_save signal when the user is saved
+	from django.contrib.auth.models import User
+	- we need to get the receiver (func) to collect this signal and perform some task
+	from django.dispatch import receiver
+	- finally, import the Profile class from models.py
+	from .models import Profile
+	
+	def create_profile(sender, instance, created, **kwargs):
+   		if created:
+		Profile.objects.create(user=instance)
+
+	- we want to run this every time a user is created
+		- we want to use the receiver we imported
+		- use this as a decorator with parameters
+	@receiver(post_save, sender=User)
+
+	- SUMMARY: if the user was created, create the profile object with the user = the instance of the user created
+
+	- let's create a save profile every time the user instance is modified
+	@receiver(post_save, sender=User)
+	def save_profile(sender, instance, **kwargs):
+		instance.profile.save()
+
+	- now, we have to import our signals inside our ready func of our users/apps.py file
+	- write this as a method in UserConfig class in apps.py
+	def ready(self):
+	        import users.signals
+
+	- NOW, we should be able to see a default image for our new user (if we register a new user via the front end)
+		- this means django created a new profile for us using the signals we set up earlier
+
+tree .                                                                                
+.
+├── blog
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-37.pyc
+│   │   ├── admin.cpython-37.pyc
+│   │   ├── apps.cpython-37.pyc
+│   │   ├── models.cpython-37.pyc
+│   │   ├── urls.cpython-37.pyc
+│   │   └── views.cpython-37.pyc
+│   ├── admin.py
+│   ├── apps.py
+│   ├── migrations
+│   │   ├── 0001_initial.py
+│   │   ├── __init__.py
+│   │   └── __pycache__
+│   │       ├── 0001_initial.cpython-37.pyc
+│   │       └── __init__.cpython-37.pyc
+│   ├── models.py
+│   ├── static
+│   │   └── blog
+│   │       └── main.css
+│   ├── templates
+│   │   └── blog
+│   │       ├── about.html
+│   │       ├── base.html
+│   │       └── home.html
+│   ├── tests.py
+│   ├── urls.py
+│   └── views.py
+├── db.sqlite3
+├── ira_django_project
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-37.pyc
+│   │   ├── settings.cpython-37.pyc
+│   │   ├── urls.cpython-37.pyc
+│   │   └── wsgi.cpython-37.pyc
+│   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── manage.py
+├── media
+│   ├── default.jpg
+│   └── profile_pics
+│       └── me_arrow.jpeg
+└── users
+    ├── __init__.py
+    ├── __pycache__
+    │   ├── __init__.cpython-37.pyc
+    │   ├── admin.cpython-37.pyc
+    │   ├── apps.cpython-37.pyc
+    │   ├── forms.cpython-37.pyc
+    │   ├── models.cpython-37.pyc
+    │   ├── signals.cpython-37.pyc
+    │   └── views.cpython-37.pyc
+    ├── admin.py
+    ├── apps.py
+    ├── forms.py
+    ├── migrations
+    │   ├── 0001_initial.py
+    │   ├── __init__.py
+    │   └── __pycache__
+    │       ├── 0001_initial.cpython-37.pyc
+    │       └── __init__.cpython-37.pyc
+    ├── models.py
+    ├── signals.py
+    ├── templates
+    │   └── users
+    │       ├── login.html
+    │       ├── logout.html
+    │       ├── profile.html
+    │       └── register.html
+    ├── tests.py
+    └── views.py
+	
+	
+	
 
 	
 	
