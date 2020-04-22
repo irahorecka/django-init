@@ -1434,9 +1434,396 @@ tree .
     │       └── register.html
     ├── tests.py
     └── views.py
-	
 
+
+
+
+
+>>> TUTORIAL 10 <<<
+https://www.youtube.com/watch?v=-s7e_Fy6NRU
+
+- goal:
+	- give users the ability to make posts that will appear on the home page
+	- use class-based views to work with our post models
+
+- using class-based views
+	- go to blog/views.py
+	- currently we are using a function-based approach for handling the html views content
 	
+	- class-based views have built in functionality that'll handle a lot of backend things
+		- different kinds
+			- list
+			- detail
+			- create
+			- update
+			- delete
+		- a blog page might use the list based view (blogs appear in a list)
+		- youtube will list a subscriptions page -- i.e. a list based view
+			- if we click on a list view here, we'd be taken to a detail view
+		- have the ability to update and delete our videos
+			- update view
+			- delete view
+
+	- django tries to predict some of this behavior
+	- let's try to manipulate the home page views
+
+	- modify the following:
+		from django.views.generic import ListView
+		# create class that inherits ListView - must create var called model
+		# what model to query to create the list -- i.e. all of the posts
+		class PostListView(ListView):
+    			# we need to create a var called model
+			model = Post
+
+	- now let's modify our blogs/urls.py to handle our new class-based views
+	from django.urls import path
+	from .views import PostListView
+	from . import views
+
+	urlpatterns = [
+	    #  pass in PostListView.as_view() argument -- .as_view() allows us to get the view obj
+	    path('', PostListView.as_view(), name='blog-home'),
+	    path('about/', views.about, name='blog-about'),
+	]
+	
+		- we get a TemplateDoesNotExist error if we just pass this in
+		- class based views look for templates with a certain pattern
+			- blog/post_list.html
+			- i.e. <app>/<model>_<viewtype>.html
+		- we can change the template this page is looking for
+		- add this to our PostListView class
+		template_name = 'blog/home.html'  # <app>/<model>_<viewtype>.html
+
+		- we need to create a content our html can loop over (i.e. context)
+		- add this to below template_name (set an attribute)
+		context_object_name = 'posts'  # i.e. posts == context key in our home func
+
+		- NOW our page should load just fine
+
+- we must change the ordering of our posts -- currently new posts are at the bottom
+	- let's see the latest ones at the top
+	- change our query order to the db
+	add this var to our PostListView class to order by date_posted
+	ordering = ['-date_posted']  # goes oldest to newest -- add a '-' in front to reverse this order
+
+	- in our func view (home) we had to render the func and explicitly pass in var info
+	- if we stick to our conventions in our class based view, we can execute a good render with one line of code
+
+	- let's create a view for individual post (detail view)
+	- in our blog/views.py, create a new class for detailed view
+	class PostListView(DetailView):
+	    model = Post
+
+	- now, let's create a route in our urls.py
+	from .views import PostListView, PostDetailView
+
+	- we must create a url pattern that contains a variable
+		- i.e. an id of a post is part of the route
+	- add this within our urlpatterns
+	path('post/<int:pk>/', PostDetailView.as_view(), name='post-detail'),  # pk = primary key, int is the type
+	
+	- the <int:pk> will allow us to grab that key value from our url and use it in our view func
+		- NOTE: our detail views expect a default 'pk' var -- can be modified if desired
+	
+	- create a template that will display our detail views
+		- because we want to stick to convention, let's create the default html file via the route: <app>/<model>_<viewtype>.html
+		- create blog/templates/blog/post_detail.html
+		- very similar to home.html -- copy it over
+			- remove looping over template sector -- we're looking at only one post
+			- remove post.title as a link, therefore remove the anchor tag in line 10
+				- keep post.title for the header
+		- when dealing with detailed views, it expects the context of the template to be called 'object' (i.e. change 'post')
+			- change all the post var to say object
+			- i.e post.content --> object.content
+
+		- NOW, we can visit http://localhost:8000/post/1/ and see post 1 on a single page
+
+- let's add links to these individual post routes on our home page (i.e. title of our blog)
+	- these can be found in our home template
+	- look at line 11 of home.html in our post.title anchor tag (notice the #)
+	- swap the # for {% url 'post-detail' post.id%}
+	
+	- NOW, we should be able to click on our post title and go to our individual post (detail view)
+	
+	- if we route to a post id that doesn't exist, we would get a 404 error (e.g. post/10/)
+
+- let's make a create, update, and delete view so we can do all of these with post on the front end
+	- how do we create a new post
+	- go to blog/views.py
+	import CreateView
+	class PostCreateView(CreateView):
+	    model = Post
+
+	- now, we must pass in arguments we want to be in the created post (pass this in our class)
+		- e.g. title and content (date posted will be created automatically)
+	- add this to our class:
+	fields = ['title', 'content']
+
+	- go to blog/urls.py and import PostCreateView and add this to urlpatterns:
+	path('post/new/', PostCreateView.as_view(), name='post-create'),
+
+	- we need to create a template for this form -- now, the default name is not as expected (post_create)
+		- the default is <model>_form.html
+	- the html layout is really similar to our register template - let's copy that over
+		- keep 'form' in the django template -- django expects that to be our template name as default (for create view)
+	- we need to change the legend and submit
+		- legend: Blog Post
+		- submid: Post
+		- we can delete the div with Already have an account?
+
+	- NOW, we should be able to go to http://localhost:8000/post/new/ and see the form to create a new blog post
+
+	- why class based views are powerful:
+		- we didn't have to create a forms module to create this form
+		- all we did is tell the create view to work with the post model and add the title and content field within that form
+	
+	- BUT if we try to create a new post, this won't work (an IntegrityError will be thrown)
+		- we need an author id
+			- i.e. current logged in user
+
+- we must override the form valid method for our create view -- add this method in our PostCreateView class
+	def form_valid(self, form):
+	        # set author of form before submission
+        	form.instance.author = self.request.user
+	        # validate form by running the form_valid method on our parent class
+        	return super().form_valid(form)
+
+	- now let's try to run this...
+	- we get an ImproperlyConfigured error
+		- we don't have a redirect url
+	- NOTICE, if we go back to home, our blog post was created just fine
+	- let's redirect to the detailed page afterwards
+		- we must create a get absolute url method in our model
+	
+	- open up blog/models.py
+		- we need to get the url of a particular route
+			- we need to use the reverse func (not redirect)
+			- redirect = redirect to specific route
+			- reverse = return the full url to that route as a str
+	
+	- django will autocomplete most of this for you (standard method), but add this to our Post class (method)
+	def get_absolute_url(self):
+	        return reverse("post_detail", kwargs={"pk": self.pk})
+
+	- if we want to go to the home page after submission, we can set an attr in the create view called success_url and set to home page
+	- this would've take a lot more code if we did this with regular functions instead
+
+- we need to make it that we can only create posts if we are logged in as the user
+	- if we try to access this without logging in --> go to log in page
+		- we saw how to do this using the func method (using decorators)
+	- we need to use a login mixin
+		- class we inherit from which will add this functionality
+
+	- go to blog/views.py
+	from django.contrib.auth.mixins import LoginRequiredMixin
+	- modify args in class PostCreateView like so:
+	class PostCreateView(LoginRequiredMixin, CreateView):
+
+	- NOW, we should be redirected to the login page if we try to create a post without logging in
+
+- let's create an update feature on the front end to update blog posts
+	- go to blog/views.py
+	import UpdateView
+	class PostUpdateView(LoginRequiredMixin, UpdateView):
+	    model = Post
+	    fields = ['title', 'content']
+	    # override the form valid method
+    
+	    def form_valid(self, form):
+        	# set author of form before submission
+	        form.instance.author = self.request.user
+        	# validate form by running the form_valid method on our parent class
+	        return super().form_valid(form)
+	
+	- now go to urls.py and add
+	import PostUpdateView
+	- add this to the urlpatterns list
+	path('post/<int:pk>/update', PostUpdateView.as_view(), name='post-update'),
+		- since we are providing the primary key, django updateview will take care of everything else
+		- it will use the same post_form template for the create view
+
+	- NOW, if we go to a blog post and go to update (e.g. localhost:8000/post/5/update), we should be able to update it and redirect ourself back to the details page
+
+- always plan for people using and abusing your application
+	- for example, we aren't checking if the correct author is trying to update his/her post -- could they update another post?
+	- right now, we can update someone else's blog post -- not good
+	
+	- we'll need another mixin
+	- go to blog/views.py
+	from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+	
+	- add this method to our PostUpdateView class
+	def test_func(self):
+	        """UserPassesTestMixin will run this to check for correct
+	        conditions, i.e. correct author"""
+	        post = self.get_object()  # get post we are currently trying to update
+        	# check current user is author of post
+	        if self.request.user == post.author:
+        	    return True
+	        return False
+
+	- NOW, if we try to edit someone else's post, we will get a 403 Forbidden error.
+
+- let's create a delete view for deleting posts
+	- let's go to blog/views.py
+	import DeleteView
+	- two requirements for access
+		- user is logged in
+		- user is the author to delete
+	- we'll copy the inherited mixins from PostUpdateView
+	- we'll also copy the test_func method from the PostUpdateView
+
+	- let's go to blog/urls.py
+	import PostDeleteView 
+	- now we need to add a path to our urlpatterns
+	path('post/<int:pk>/delete', PostDeleteView.as_view(), name='post-delete'),
+
+	- now, lets create the form for this route
+		- what this form will do is ask if we are sure we want to delete this post
+		- this post will be calles post_confirm_delete.html
+
+	- go to blog/templates
+		- create post_confirm_delete.html
+		- copy content from post_form.html
+	- change certain features
+		- legend: make to Delete Post
+		- doesn't pass form, so remove crispy forms 
+			- rm django template
+			- rm form django template
+	- just a page that asks if we want to delete the post
+		- if submit, delete post
+	- add h2 tag under legend asking for confirmation
+	<h2>Are you sure you want to delete the post " {{ object.title }}</h2>
+	- change submit button to Yes, Delete
+		- give class of btn btn-outline-danger
+
+	- add cancel link that'll take them back to post detail view
+		- if they changed their mind
+		- add this as an anchor tag
+		<a class="btn btn-outline-secondary" href="{% url 'post-detail' object.id %}">Cancel</a> <!-- use btn btn-outline-secondary for muted style -->
+
+	- NOW, we should be able to access the delete view of our website (e.g. http://localhost:8000/post/8/delete)
+	- however, if we delete the post, we get an ImporperlyConfigured error
+		- we need to have a redirect url upon deletion -- need to provide a success url
+		- post hasn't been deleted due to the exception
+	- go to blog/views.py
+		- add this to PostDeleteView
+		success_url = '/'
+			- redirect user back to home page after 'successful' deletion
+	
+	- NOW, we should be able to delete and go back to the home page
+
+- we added all of this functionality using class based views
+
+- let's add links to access these functionalities on the front end
+	- let's put a new link in our navigation bar to create a new post
+		- open blog/templates/base.html
+		- go to the <!-- Navbar Right Side -->
+		- add this under div class navbar-nav
+		<a class="nav-item nav-link" href="{% url 'post-create' %}">New Post</a>
+
+	- let's add links to update and delete posts
+		- go to post details page
+		- i.e. post_detail.html
+		- add this to line 9 (under small tag)
+		{% if object.author == user %}
+        	        <a class="btn btn-secondary btn-sm mt-1 mb-1" href="{% url 'post-update' object.id %}">Update</a>
+	                <!-- btn-secondary = muted button, btn-sm = small button, mt-1 = margin top 1, mb-1 = margin bottom 1-->
+                	<a class="btn btn-danger btn-sm mt-1 mb-1" href="{% url 'post-delete' object.id %}">Delete</a>
+	                <!-- btn-danger = danger button -->
+            	{% endif %}
+
+	- let's make the update and delete button on a new line
+		- open post_detail.html again	
+		- wrap the code above in a div tag, indent as needed
+
+tree .                                                                                            
+.
+├── blog
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-37.pyc
+│   │   ├── admin.cpython-37.pyc
+│   │   ├── apps.cpython-37.pyc
+│   │   ├── models.cpython-37.pyc
+│   │   ├── urls.cpython-37.pyc
+│   │   └── views.cpython-37.pyc
+│   ├── admin.py
+│   ├── apps.py
+│   ├── migrations
+│   │   ├── 0001_initial.py
+│   │   ├── __init__.py
+│   │   └── __pycache__
+│   │       ├── 0001_initial.cpython-37.pyc
+│   │       └── __init__.cpython-37.pyc
+│   ├── models.py
+│   ├── static
+│   │   └── blog
+│   │       └── main.css
+│   ├── templates
+│   │   └── blog
+│   │       ├── about.html
+│   │       ├── base.html
+│   │       ├── home.html
+│   │       ├── post_confirm_delete.html
+│   │       ├── post_detail.html
+│   │       └── post_form.html
+│   ├── tests.py
+│   ├── urls.py
+│   └── views.py
+├── db.sqlite3
+├── ira_django_project
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-37.pyc
+│   │   ├── settings.cpython-37.pyc
+│   │   ├── urls.cpython-37.pyc
+│   │   └── wsgi.cpython-37.pyc
+│   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── manage.py
+├── media
+│   ├── default.jpg
+│   └── profile_pics
+│       ├── Hank_Williams.jpeg
+│       ├── Screen_Shot_2019-08-04_at_5.47.57_PM.png
+│       ├── me_arrow.jpeg
+│       ├── me_arrow_sWiq1Sv.jpeg
+│       ├── vaporwave_1.jpeg
+│       ├── vaporwave_1_fb8s8bI.jpeg
+│       └── vaporwave_1_g16IaWF.jpeg
+└── users
+    ├── __init__.py
+    ├── __pycache__
+    │   ├── __init__.cpython-37.pyc
+    │   ├── admin.cpython-37.pyc
+    │   ├── apps.cpython-37.pyc
+    │   ├── forms.cpython-37.pyc
+    │   ├── models.cpython-37.pyc
+    │   ├── signals.cpython-37.pyc
+    │   └── views.cpython-37.pyc
+    ├── admin.py
+    ├── apps.py
+    ├── forms.py
+    ├── migrations
+    │   ├── 0001_initial.py
+    │   ├── __init__.py
+    │   └── __pycache__
+    │       ├── 0001_initial.cpython-37.pyc
+    │       └── __init__.cpython-37.pyc
+    ├── models.py
+    ├── signals.py
+    ├── templates
+    │   └── users
+    │       ├── login.html
+    │       ├── logout.html
+    │       ├── profile.html
+    │       └── register.html
+    ├── tests.py
+    └── views.py
+
 	
 	
 	
