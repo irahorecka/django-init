@@ -1824,8 +1824,278 @@ tree .
     ├── tests.py
     └── views.py
 
+
+
+
+
+>>> TUTORIAL 11 <<<
+https://www.youtube.com/watch?v=acOktTcTVEQ
+
+- we will add pagination so we don't pull down too many posts at once
+- we can create a page of posts by a user that will also be paginated
+
+- let's get some json files to work with pagination
+	- go to snippets code and copy over
+	- label it 'posts.json' and put the file in the main projects folder
+	- NOTE: the posts are currently on one line - that's ok for the json file to compile
+
+- to add the json file to our application, open up python manage.py shell and write the following:
+>>> import json
+>>> from blog.models import Post
+>>> with open('posts.json') as f:
+...     posts_json = json.load(f)
+...
+>>> for post in posts_json:
+...     post = Post(title=post['title'], content=post['content'], author_id=post['user_id'])
+...	post.save()
+
+- NOTE: I deleted users as I went along this project -- user_id 2 no longer exists, only 1 (irahorecka) and 6 (NewUser4)
+	- change all instances of "user_id": 2 to "user_id": 6 in json file.
+	- now we can create posts in the iterator
+	- note, the keys we are accessing are the keys used in the json file (e.g. ['content'])
+
+- Lorem ipsum is considered a filler text universally, where meaning of the text does not matter, but rather the styling of text on a page.
+
+- if we run our server, all of our posts should be on a single page
+	- if we actually had this (with images included), loading at once a massive page like this will take a lot of resource
+- we'll be working with a paginator object
+	- open our shell (django) and type this
+	>>> from django.core.paginator import Paginator
+	>>> posts = ['1', '2', '3', '4', '5']
+	>>> p = Paginator(posts, 2)  # the second argument 2 means we want two posts per page
+		- i.e. 3 pages total
+	>>> p.num_pages
+	3
+	- loop over every page in the Paginator obj
+	>>> for page in p.page_range:
+	...     print(page)
+	...
+	1
+	2
+	3
+	- if we want to access a page, we would:
+	>>> p1 = p.page(1)
+	>>>
+	>>> p1
+	<Page 1 of 3>
+	>>> p1.number
+	1
+	- now if we want to view the content (obj) of page 1 (p1) we would:
+	>>> p1.object_list
+	['1', '2']
 	
+	- most important feature we'll be creating is checking whether there are previous/next pages
+		- in our example, we should not have a previous page
+		>>> p1.has_previous()
+		False
+		>>> p1.has_next()
+		True
+		>>> p1.next_page_number()
+		2
+
+- let's paginate our posts
+	- open blog/views.py
+	- go to PostListView (so many posts here)
+	- add this attr to the class
+	paginate_by = 2  # no. posts per page
+
+	- NOW, there should be only 2 blog posts per page
+	- manually type localhost:/8000/?page=2 to view page 2 of our blog lists
+		- if we try to access a page that doesn't exist, i.e. 18, we will get a 404 error
+
+- let's add links to view first, previous, successive, and last posts (in the template)
+	- go to blog/templates/blog/home.html
+	- our class based view already passes in the context we'll need to access this page information
 	
+	- open a new line under {% endfor %}
+
+	{% if is_paginated %}
+
+        {% if page_obj.has_previous %}  <!-- page object our view passed into our template -->
+            <a class="btn btn-outline-info mb-4" href="?page=1">First</a>  <!-- route to first page - link -->
+            <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.previous_page_number }}">Previous</a>  <!-- route to previous page - link -->
+        {% endif %}
+
+        <!-- add features that will allow nearby next and prev pages to also show up -->
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}  <!-- check if the page number is current page -->
+                <a class="btn btn-info mb-4" href="?page={{ num }}">{{ num }}</a>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}  <!-- if the number we're on is within 3 previous and forward pages -->
+                <a class="btn btn-outline-info mb-4" href="?page={{ num }}">{{ num }}</a>
+            {% endif %}
+        {% endfor %}
+
+        <!-- if next page exists, allow user to jump to next pages and the last page -->
+        {% if page_obj.has_next %}  <!-- page object our view passed into our template -->
+            <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.next_page_number }}">Next</a>  <!-- route to next page - link -->
+            <a class="btn btn-outline-info mb-4" href="?page={{ page_obj.paginator.num_pages }}">Last</a>  <!-- route to last page number -->
+        {% endif %}
+
+    	{% endif %}
+
+	- NOW, we should be able to see first, previous, previous current successive pages, next, and last page buttons with appropriate functionality
+	- Pagination is now done
+
+- let's change our posts per page to a higher value
+	- let's try 5
+	- go to blog/views.py
+	change paginate_by to 5
+	- NOW, there should be 5 blog items per page
+
+ 
+- let's make the user link (i.e. in the home page) active and route them to the user page with his/her blog posts
+	- go to blog/views.py and write the following:
+	from django.shortcuts import render, get_object_or_404
+	from django.contrib.auth.models import User  # must import user obj
+
+	- make a new list view class
+	class UserPostListView(ListView):
+	    model = Post
+	    template_name = 'blog/user_posts.html'  # <app>/<model>_<viewtype>.html
+	    context_object_name = 'posts'
+	    # ordering = ['-date_posted']
+	    paginate_by = 5
+
+	    def get_query_set(self):
+ 	       """get the user associated with the username (get from url)
+        	if user does not exist, return 404 page does not exist"""
+	        user = get_object_or_404(User, username=self.kwargs.get('username'))  # get username from the parameter in the url
+        	# we are overriding the query the list view is making, we are overriding ['-date_posted'] above -- move below like so
+	        return Post.objects.filter(author=user).order_by('-date_posted')  # limit posts on page to this filter
+
+	- let's create this path in our urlpatterns
+	- open blog/urls.py and add:
+	from .views import UserPostListView
+	- add this to urlpatterns:
+	path('user/<str:username>', UserPostListView.as_view(), name='user-post'),  # username with string dtype and name it 'user-post'
+
+	- now we must create a template called user_posts.html (assigned in UserPostListView)
+	- make this html file in blog/templates/blog
+	- this will be very similar to our home page content (home.html), and keep the pagination when you copy it over
+		- user post pages can be paginated if they have enough posts
+	- add heading under the {% block content %} block:
+	<h1 class="mb-3">Posts by {{ view.kwargs.username }} ({{ page_obj.paginator.count }})</h1>  <!-- get username passed into our url with total posts the author made -->
+
+	- modify line 9 of user_posts.html like so:
+	<a class="mr-2" href="{% url 'user-post' post.author.username %}">{{ post.author }}</a>  <!-- take url pattern from url-post and get author username -->
+
+	- we need to add links to our user route to our home page and post detail template
+		- we are repeating code here, but we will fix this in later tutorials
+	- copy the href code block snippet above
+	- post this block in the href of line 8 of our home.html page
+
+	- go to post_detail.html
+	- copy the href above in line 7 to our dead href link
+		- change the post.author.username to object.author.username due to the following code block calling object.author
+	<a class="mr-2" href="{% url 'user-post' object.author.username %}">{{ object.author }}</a>  <!-- get user's url route -->
+	
+	- NOW, our username link on the homepage should be active
+		- HOWEVER, when we click on this link, we see posts from every user on the blog -- this is wrong
+
+- let's fix the query set of user page fetch
+	- go to blog/views.py
+	- under UserPostListView:
+		def get_query_set(self) --> def get_queryset(self)  # a built in django method
+	
+	- NOW, everything should work -- appropriate user and their post count + content when clicking on their username link in the home page blog
+
+	- make sure we get a 404 error if we navigate to a username that doesn't exist
+		- e.g. localhost:8000/user/BadUser
+		- and indeed, we get a 404 error
+
+tree .                                                                                            
+.
+├── blog
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-37.pyc
+│   │   ├── admin.cpython-37.pyc
+│   │   ├── apps.cpython-37.pyc
+│   │   ├── models.cpython-37.pyc
+│   │   ├── urls.cpython-37.pyc
+│   │   └── views.cpython-37.pyc
+│   ├── admin.py
+│   ├── apps.py
+│   ├── migrations
+│   │   ├── 0001_initial.py
+│   │   ├── __init__.py
+│   │   └── __pycache__
+│   │       ├── 0001_initial.cpython-37.pyc
+│   │       └── __init__.cpython-37.pyc
+│   ├── models.py
+│   ├── static
+│   │   └── blog
+│   │       └── main.css
+│   ├── templates
+│   │   └── blog
+│   │       ├── about.html
+│   │       ├── base.html
+│   │       ├── home.html
+│   │       ├── post_confirm_delete.html
+│   │       ├── post_detail.html
+│   │       ├── post_form.html
+│   │       └── user_posts.html
+│   ├── tests.py
+│   ├── urls.py
+│   └── views.py
+├── db.sqlite3
+├── ira_django_project
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-37.pyc
+│   │   ├── settings.cpython-37.pyc
+│   │   ├── urls.cpython-37.pyc
+│   │   └── wsgi.cpython-37.pyc
+│   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── manage.py
+├── media
+│   ├── default.jpg
+│   └── profile_pics
+│       ├── Hank_Williams.jpeg
+│       ├── Screen_Shot_2019-08-04_at_5.47.57_PM.png
+│       ├── me_arrow.jpeg
+│       ├── me_arrow_sWiq1Sv.jpeg
+│       ├── vaporwave_1.jpeg
+│       ├── vaporwave_1_fb8s8bI.jpeg
+│       └── vaporwave_1_g16IaWF.jpeg
+├── posts.json
+└── users
+    ├── __init__.py
+    ├── __pycache__
+    │   ├── __init__.cpython-37.pyc
+    │   ├── admin.cpython-37.pyc
+    │   ├── apps.cpython-37.pyc
+    │   ├── forms.cpython-37.pyc
+    │   ├── models.cpython-37.pyc
+    │   ├── signals.cpython-37.pyc
+    │   └── views.cpython-37.pyc
+    ├── admin.py
+    ├── apps.py
+    ├── forms.py
+    ├── migrations
+    │   ├── 0001_initial.py
+    │   ├── __init__.py
+    │   └── __pycache__
+    │       ├── 0001_initial.cpython-37.pyc
+    │       └── __init__.cpython-37.pyc
+    ├── models.py
+    ├── signals.py
+    ├── templates
+    │   └── users
+    │       ├── login.html
+    │       ├── logout.html
+    │       ├── profile.html
+    │       └── register.html
+    ├── tests.py
+    └── views.py
+		
+	
+
+	
+
 	
 
 	
