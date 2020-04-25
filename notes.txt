@@ -2091,9 +2091,257 @@ tree .
     │       └── register.html
     ├── tests.py
     └── views.py
-		
-	
 
+
+
+
+
+>>> Tutorial 12 <<<
+https://www.youtube.com/watch?v=-tyBEsHSv7w
+
+- learn how to use email users to reset passwords
+	- django has functionality to generate token to send to user who wants a password reset
+
+- go into ira_django_project/urls.py 
+	- create paths with the built in views in urlpatterns
+	- create url pattern called password reset ('password-reset/')
+	path('password-reset/',
+         auth_views.PasswordResetView.as_view(
+         template_name='users/password_reset.html'),
+         name='password_reset'),  # asks user if password reset necessary
+
+	- this will send password reset form to user to fill out (password reset instruction to their email)
+
+- let's create the password_reset.html template in users/templates/users
+	- have password_reset.html present a form for filling out the email address
+	- copy template from login.html
+	- change line 8: Reset Password
+	- change line 12: Request Password
+	- delete div underneath <form> (i.e. remove 'Need An Account?'
+
+- we need to create a page for after this form is submitted successfully
+	- route that confirms email has been set + suggests that you check your inbox
+	- let's create this
+
+	- go to urlpatterns in ira_django_project/urls.py
+	- copy the password reset item in list
+		- paste below with modifications:
+		path('password-reset/done/',
+	         auth_views.PasswordResetDoneView.as_view(
+        	 template_name='users/password_reset_done.html'),
+	         name='password_reset_done'),  # page to confirm email has been sent
+
+- we need to create a template for password_reset_done view
+	- go to users/templates/users and create password_reset_done.html
+		- this will be an informative page -- i.e. no forms
+	- copy the logout.html template
+	- modify the html doc as follows:
+		- remove everything inside the content block
+		- put a bootstrap alert on this page in the div tag (within content block)
+	<div class="alert alert-info">
+        	An email has been sent with instructions to reset your password.
+	</div>
+
+	- open this in browser to see if this is working:
+		- as expected, we get an exception: NoReverseMatch at /password-reset/
+		- it's looking for a password_reset_confirm route
+		- the error occurred at {{ protocol }}://{{ domain }}{% url 'password_reset_confirm' uidb64=uid token=token %}
+			- trying to create a url to this password_reset_confirm route
+			- the template that threw this error is called 'password_reset_email.html'
+		- it is trying to pass two things to the url parameter
+			- uidb64
+				- users id encoded in base64
+			- token
+				- token to check the password is valid
+		- we need to accept these tokens in our url so we know the person who requested the password reset is the person trying to access that page
+			- adds a layer of security
+
+- let's create the password reset route the password_reset.html is routing us to
+	- open up ira_django_project/urls.py and go to urlpatterns
+	- create a route for password_reset_confirm in urlpatterns
+	path('password-reset-confirm/<uidb64>/<token>/',  # must accept uidb64 and token parameters (expected)
+         auth_views.PasswordResetConfirmView.as_view(
+         template_name='users/password_reset_confirm.html'),
+         name='password_reset_confirm'),  # page to confirm password reset
+	
+	- now go to users/templates/users and create password_reset_confirm.html
+		- this will have a form for us to reset our password
+		- let's copy the password_reset.html over
+		- change Request Password Reset to Reset Password (line 12)
+
+	- now, let's try to resubmit our password reset form on the browser (i.e. pass in your email)
+		- now we're getting a new exception: ConnectionRefusedError at /password-reset/
+		- this error is less helpful than most other pages
+			- tries to send an email or failing
+			- we don't have an email server to send an email
+
+	- several choices we can make to send email
+		- in this video, we will be using gmail
+		- using gmail is a better example of how things will likely be done in production
+	
+	- to do this with gmail, we might have to let google know to expect sign-in from a python application
+		- enable two factor authentication
+		- create password specifically for the app we want to sign in from
+			- https://accounts.google.com/signin/v2/sl/pwd?service=accountsettings&passive=1209600&osid=1&continue=https%3A%2F%2Fmyaccount.google.com%2Fapppasswords&followup=https%3A%2F%2Fmyaccount.google.com%2Fapppasswords&rart=ANgoxccGd5zEAsFFYBYKpRkOS8tXlM37FWA-aVGXFjfwXO5APe-3f_vrGlZJbP4_zQI_iiXFK9V4tGp9QUzark1ej2kiYsJPNg&authuser=0&csig=AF-SEnaSmjWXBfGS7saH%3A1587776287&flowName=GlifWebSignIn&flowEntry=ServiceLogin
+		- follow these instructions to allow python to use our gmail account
+
+	- open ira_django_project/settings.py
+		- scroll to the bottom so set a few more variables
+		EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+		EMAIL_HOST = 'smtp.gmail.com'
+		EMAIL_PORT = 587
+		EMAIL_USE_TLS = True
+
+	- ** WATCH how to hide sensitive passwords in your environment variable **
+		https://www.youtube.com/watch?reload=9&v=5iWhQWVXosU
+		- go to /Users/irahorecka/Desktop/Harddrive_Desktop/CS/CoreySchafer to view notes
+	
+	- add these variables to our ira_django_project/settings.py at the bottom:
+		EMAIL_HOST_USER = os.environ.get('EMAIL_USER')
+		EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_PASS')
+		- make sure to set these variables in ~/.bash_profile appropriately (set to our gmail account)
+
+	- NOW, we should theoretically be able to send our user a password reset email through the django frontend
+		- make sure you configures ~/.bash_profile correctly with your username and password
+		- make sure you enable third party use of your gmail account on google apps
+		- the email says, "password reset on localhost:8000"
+	- nocite the reset email url that is sent
+	http://localhost:8000/password-reset-confirm/MQ/5fy-a329d646e16fe4dfee82/
+		- you have the uidb64 key (MQ)
+		- you have the token 5fy-a329d646e16fe4dfee82
+	- click on the password reset link that was sent
+
+	- if we set a new password and click submit, we get an exception: NoReverseMatch at /password-reset-confirm/MQ/set-password/
+		- we need a route called password-reset-complete
+
+	- open ira_django_project/urls.py and go to urlspattern
+	- add:
+	path('password-reset-complete/',
+         auth_views.PasswordResetCompleteView.as_view(
+         template_name='users/password_reset_complete.html'),
+         name='password_reset_complete'),  # route after successful password change
+	- now, go to users/templates/users and create password_reset_complete.html
+	- an informative template (no forms) -- similar to password_reset_done.html
+		- keep the alert class
+		- set alert title to Your password has been set.
+		- link them to the sign-in page with an anchor tag:
+		<a href="{% url 'login' %}">Sign In Here</a>
+
+	- NOW, the navigation to the login page should be complete
+
+- let's make a link for a password reset
+	- we should have this option on the login page
+	- go to users/templates/users and open login.html
+	- put the reset password link right after the submit button
+	<small class="test-muted ml-2">
+        	<a href="{% url 'password-reset' %}">Forgot Password?</a>
+        </small>	
+		- i.e. after the submit button
+
+	- if we load the password reset link, we get an exception: NoReverseMatch at /login/
+		- change 'password-reset' to 'password_reset' in our login.html
+
+	- NOW, we can see the Forgot Password? link and it routes us to the reset password form
+
+- leave the password token and handling to django for now!
+
+tree .                                                                    
+.
+├── blog
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-37.pyc
+│   │   ├── admin.cpython-37.pyc
+│   │   ├── apps.cpython-37.pyc
+│   │   ├── models.cpython-37.pyc
+│   │   ├── urls.cpython-37.pyc
+│   │   └── views.cpython-37.pyc
+│   ├── admin.py
+│   ├── apps.py
+│   ├── migrations
+│   │   ├── 0001_initial.py
+│   │   ├── __init__.py
+│   │   └── __pycache__
+│   │       ├── 0001_initial.cpython-37.pyc
+│   │       └── __init__.cpython-37.pyc
+│   ├── models.py
+│   ├── static
+│   │   └── blog
+│   │       └── main.css
+│   ├── templates
+│   │   └── blog
+│   │       ├── about.html
+│   │       ├── base.html
+│   │       ├── home.html
+│   │       ├── post_confirm_delete.html
+│   │       ├── post_detail.html
+│   │       ├── post_form.html
+│   │       └── user_posts.html
+│   ├── tests.py
+│   ├── urls.py
+│   └── views.py
+├── db.sqlite3
+├── ira_django_project
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-37.pyc
+│   │   ├── settings.cpython-37.pyc
+│   │   ├── urls.cpython-37.pyc
+│   │   └── wsgi.cpython-37.pyc
+│   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── manage.py
+├── media
+│   ├── default.jpg
+│   └── profile_pics
+│       ├── Hank_Williams.jpeg
+│       ├── IMG_1959.jpg
+│       ├── Screen_Shot_2019-08-04_at_5.47.57_PM.png
+│       ├── me_arrow.jpeg
+│       ├── me_arrow_sWiq1Sv.jpeg
+│       ├── vaporwave_1.jpeg
+│       ├── vaporwave_1_fb8s8bI.jpeg
+│       └── vaporwave_1_g16IaWF.jpeg
+├── posts.json
+└── users
+    ├── __init__.py
+    ├── __pycache__
+    │   ├── __init__.cpython-37.pyc
+    │   ├── admin.cpython-37.pyc
+    │   ├── apps.cpython-37.pyc
+    │   ├── forms.cpython-37.pyc
+    │   ├── models.cpython-37.pyc
+    │   ├── signals.cpython-37.pyc
+    │   └── views.cpython-37.pyc
+    ├── admin.py
+    ├── apps.py
+    ├── forms.py
+    ├── migrations
+    │   ├── 0001_initial.py
+    │   ├── __init__.py
+    │   └── __pycache__
+    │       ├── 0001_initial.cpython-37.pyc
+    │       └── __init__.cpython-37.pyc
+    ├── models.py
+    ├── signals.py
+    ├── templates
+    │   └── users
+    │       ├── login.html
+    │       ├── logout.html
+    │       ├── password_reset.html
+    │       ├── password_reset_complete.html
+    │       ├── password_reset_confirm.html
+    │       ├── password_reset_done.html
+    │       ├── profile.html
+    │       └── register.html
+    ├── tests.py
+    └── views.py
+
+
+	
+	
 	
 
 	

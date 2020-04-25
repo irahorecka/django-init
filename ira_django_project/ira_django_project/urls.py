@@ -26,6 +26,22 @@ urlpatterns = [
     path('profile/', user_views.profile, name='profile'),
     path('login/', auth_views.LoginView.as_view(template_name='users/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(template_name='users/logout.html'), name='logout'),
+    path('password-reset/',
+         auth_views.PasswordResetView.as_view(
+         template_name='users/password_reset.html'),
+         name='password_reset'),  # asks user if password reset necessary
+    path('password-reset/done/',
+         auth_views.PasswordResetDoneView.as_view(
+         template_name='users/password_reset_done.html'),
+         name='password_reset_done'),  # page to confirm email has been sent
+    path('password-reset-confirm/<uidb64>/<token>/',  # must accept uidb64 and token parameters (expected)
+         auth_views.PasswordResetConfirmView.as_view(
+         template_name='users/password_reset_confirm.html'),
+         name='password_reset_confirm'),  # page to confirm password reset
+    path('password-reset-complete/',
+         auth_views.PasswordResetCompleteView.as_view(
+         template_name='users/password_reset_complete.html'),
+         name='password_reset_complete'),  # route after successful password change
     path('', include('blog.urls')),  # go to blog.urls, as ''
 ] 
 
